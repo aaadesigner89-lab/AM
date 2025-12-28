@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجل سكري العائلة الذكي</title>
+    <title>سجل سكري العائلة المترابط</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <style>
         :root {
             --primary-color: #2ecc71; 
@@ -72,10 +73,7 @@
             padding-bottom: 5px;
         }
 
-        .header-btns {
-            display: flex;
-            gap: 5px;
-        }
+        .header-btns { display: flex; gap: 5px; }
 
         .input-row {
             display: flex;
@@ -84,7 +82,7 @@
             margin-bottom: 10px;
         }
 
-        .input-row label { flex: 1; font-size: 0.85em; color: #555; }
+        .input-row label { flex: 1; font-size: 0.82em; color: #555; font-weight: bold; }
 
         input {
             width: 70px;
@@ -170,16 +168,31 @@
     </div>
 </div>
 
-<script>
-    let currentUser = 'alawi';
-    const emails = {
-        marom: 'marammohra39@gmail.com',
-        alawi: 'aaliabuwardeh@gmail.com'
+<script type="module">
+    // ربط Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPYT4qdGcGI3XFniG3nfDZwYCkYrf383Q",
+        authDomain: "diabet-f18bb.firebaseapp.com",
+        projectId: "diabet-f18bb",
+        storageBucket: "diabet-f18bb.firebasestorage.app",
+        messagingSenderId: "273477832728",
+        appId: "1:273477832728:web:d9eeafb6db99c96096336d"
     };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // متغيرات التطبيق
+    let currentUser = 'alawi';
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     const times = ['صايم', 'بعد الغداء بساعتين', 'بعد العشاء بساعتين'];
+    const emails = { marom: 'marammohra39@gmail.com', alawi: 'aaliabuwardeh@gmail.com' };
 
-    function switchUser(user) {
+    // جعل الدوال متاحة عالمياً
+    window.switchUser = (user) => {
         currentUser = user;
         const title = document.getElementById('titleName');
         const btnA = document.getElementById('btnAlawi');
@@ -191,130 +204,4 @@
             btnM.classList.remove('active-marom');
             title.innerText = 'سجل سكري علاوي';
         } else {
-            document.documentElement.style.setProperty('--primary-color', '#ff6b81');
-            btnM.classList.add('active-marom');
-            btnA.classList.remove('active-alawi');
-            title.innerText = 'سجل سكري مروم';
-        }
-        renderDays();
-    }
-
-    function renderDays() {
-        const container = document.getElementById('daysContainer');
-        let html = '';
-        days.forEach((day, dIdx) => {
-            html += `
-                <div class="day-card" id="day-card-${dIdx}">
-                    <div class="day-header">
-                        <strong>${day}</strong>
-                        <div class="header-btns" data-html2canvas-ignore>
-                            <button class="btn-sm btn-img" onclick="downloadDayImage(${dIdx}, '${day}')">📸 صورة</button>
-                            <button class="btn-sm btn-mail" onclick="sendDailyEmail('${day}', ${dIdx})">✉️ إيميل</button>
-                        </div>
-                    </div>
-                    ${times.map((time, tIdx) => {
-                        const id = `${currentUser}-${dIdx}-${tIdx}`;
-                        return `
-                            <div class="input-row">
-                                <label>${time}:</label>
-                                <input type="number" id="input-${id}" placeholder="---">
-                                <button class="btn-icon" data-html2canvas-ignore id="lock-${id}" onclick="lockInput('${id}')">🔒</button>
-                                <button class="btn-icon" data-html2canvas-ignore id="edit-${id}" style="display:none" onclick="unlockInput('${id}')">✏️</button>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-        loadData();
-    }
-
-    // وظيفة تحميل صورة ليوم واحد
-    function downloadDayImage(dIdx, dayName) {
-        const element = document.getElementById(`day-card-${dIdx}`);
-        // إخفاء الأزرار مؤقتاً لجمالية الصورة
-        html2canvas(element, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `سكري-${currentUser}-${dayName}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-    }
-
-    // وظيفة تحميل التقرير الشامل كصورة
-    function downloadFullImage() {
-        const element = document.getElementById(`captureArea`);
-        html2canvas(element, { 
-            scale: 2, 
-            backgroundColor: "#f8f9fa",
-            ignoreElements: (node) => node.hasAttribute('data-html2canvas-ignore') 
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `تقرير-سكري-شامل-${currentUser}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-    }
-
-    function lockInput(id) {
-        const input = document.getElementById(`input-${id}`);
-        if(!input.value) return alert('يرجى إدخال القراءة');
-        input.disabled = true;
-        document.getElementById(`lock-${id}`).style.display = 'none';
-        document.getElementById(`edit-${id}`).style.display = 'inline';
-        saveToLocal();
-    }
-
-    function unlockInput(id) {
-        document.getElementById(`input-${id}`).disabled = false;
-        document.getElementById(`lock-${id}`).style.display = 'inline';
-        document.getElementById(`edit-${id}`).style.display = 'none';
-    }
-
-    function saveToLocal() {
-        const data = JSON.parse(localStorage.getItem('familySugar_v4') || '{}');
-        document.querySelectorAll('input').forEach(input => {
-            if(input.value) {
-                data[input.id] = { val: input.value, locked: input.disabled };
-            }
-        });
-        localStorage.setItem('familySugar_v4', JSON.stringify(data));
-    }
-
-    function loadData() {
-        const saved = localStorage.getItem('familySugar_v4');
-        if(!saved) return;
-        const data = JSON.parse(saved);
-        for (const id in data) {
-            const input = document.getElementById(id);
-            if(input) {
-                input.value = data[id].val;
-                if(data[id].locked) {
-                    input.disabled = true;
-                    const plainId = id.replace('input-', '');
-                    if(document.getElementById(`lock-${plainId}`)) document.getElementById(`lock-${plainId}`).style.display = 'none';
-                    if(document.getElementById(`edit-${plainId}`)) document.getElementById(`edit-${plainId}`).style.display = 'inline';
-                }
-            }
-        }
-    }
-
-    function sendDailyEmail(dayName, dIdx) {
-        const userLabel = currentUser === 'alawi' ? 'علاوي' : 'مروم';
-        const targetEmail = emails[currentUser];
-        let message = `تقرير سكري يوم ${dayName} لـ ${userLabel}:\n\n`;
-        let hasData = false;
-        times.forEach((time, tIdx) => {
-            const val = document.getElementById(`input-${currentUser}-${dIdx}-${tIdx}`).value;
-            if(val) { message += `- ${time}: ${val}\n`; hasData = true; }
-        });
-        if(!hasData) return alert('لا توجد قراءات مسجلة لهذا اليوم');
-        window.location.href = `mailto:${targetEmail}?subject=تقرير سكري - ${userLabel} - ${dayName}&body=${encodeURIComponent(message)}`;
-    }
-
-    switchUser('alawi');
-</script>
-
-</body>
-</html>
+            document.documentElement.
