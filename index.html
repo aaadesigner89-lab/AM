@@ -59,18 +59,17 @@
             border: 1px solid #eee;
             border-radius: 15px;
             padding: 15px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             background: #fff;
-            position: relative;
         }
 
         .day-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 5px;
+            padding-bottom: 8px;
         }
 
         .header-btns { display: flex; gap: 5px; }
@@ -79,13 +78,19 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
-        .input-row label { flex: 1; font-size: 0.82em; color: #555; font-weight: bold; }
+        .input-row label { 
+            flex: 2; 
+            font-size: 0.85em; 
+            color: #444; 
+            font-weight: bold;
+        }
 
         input {
-            width: 70px;
+            flex: 1;
+            width: 60px;
             padding: 10px 5px;
             border: 1px solid #ddd;
             border-radius: 10px;
@@ -169,7 +174,6 @@
 </div>
 
 <script type="module">
-    // ربط Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -185,18 +189,17 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // متغيرات التطبيق
-    let currentUser = 'alawi';
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     const times = ['صايم', 'بعد الغداء بساعتين', 'بعد العشاء بساعتين'];
     const emails = { marom: 'marammohra39@gmail.com', alawi: 'aaliabuwardeh@gmail.com' };
+    let currentUser = 'alawi';
 
-    // جعل الدوال متاحة عالمياً
+    // تبديل المستخدم
     window.switchUser = (user) => {
         currentUser = user;
-        const title = document.getElementById('titleName');
         const btnA = document.getElementById('btnAlawi');
         const btnM = document.getElementById('btnMarom');
+        const title = document.getElementById('titleName');
 
         if(user === 'alawi') {
             document.documentElement.style.setProperty('--primary-color', '#2ecc71');
@@ -204,4 +207,110 @@
             btnM.classList.remove('active-marom');
             title.innerText = 'سجل سكري علاوي';
         } else {
-            document.documentElement.
+            document.documentElement.style.setProperty('--primary-color', '#ff6b81');
+            btnM.classList.add('active-marom');
+            btnA.classList.remove('active-alawi');
+            title.innerText = 'سجل سكري مروم';
+        }
+        renderTable();
+    };
+
+    // رسم الجدول
+    function renderTable() {
+        const container = document.getElementById('daysContainer');
+        container.innerHTML = ''; // تفريغ الجدول
+
+        days.forEach((day, dIdx) => {
+            const card = document.createElement('div');
+            card.className = 'day-card';
+            card.id = `day-card-${dIdx}`;
+
+            let rowsHtml = times.map((time, tIdx) => {
+                const id = `${currentUser}-${dIdx}-${tIdx}`;
+                return `
+                    <div class="input-row">
+                        <label>${time}</label>
+                        <input type="number" id="input-${id}" placeholder="---">
+                        <button class="btn-icon" data-html2canvas-ignore id="lock-${id}" onclick="saveData('${id}')">🔒</button>
+                        <button class="btn-icon" data-html2canvas-ignore id="edit-${id}" style="display:none" onclick="unlockData('${id}')">✏️</button>
+                    </div>
+                `;
+            }).join('');
+
+            card.innerHTML = `
+                <div class="day-header">
+                    <strong>${day}</strong>
+                    <div class="header-btns" data-html2canvas-ignore>
+                        <button class="btn-sm btn-img" onclick="downloadDayImage(${dIdx}, '${day}')">📸 صورة</button>
+                        <button class="btn-sm btn-mail" onclick="sendMail('${day}', ${dIdx})">✉️ إيميل</button>
+                    </div>
+                </div>
+                ${rowsHtml}
+            `;
+            container.appendChild(card);
+        });
+        syncFromFirebase();
+    }
+
+    // الحفظ في Firebase
+    window.saveData = (id) => {
+        const val = document.getElementById(`input-${id}`).value;
+        if(!val) return alert('يرجى إدخال القراءة');
+        set(ref(db, 'sugarData/' + id), { val: val, locked: true });
+    };
+
+    // التعديل في Firebase
+    window.unlockData = (id) => {
+        const val = document.getElementById(`input-${id}`).value;
+        set(ref(db, 'sugarData/' + id), { val: val, locked: false });
+    };
+
+    // المزامنة اللحظية
+    function syncFromFirebase() {
+        onValue(ref(db, 'sugarData/'), (snapshot) => {
+            const data = snapshot.val();
+            if(!data) return;
+            for (const id in data) {
+                const input = document.getElementById(`input-${id}`);
+                if(input) {
+                    input.value = data[id].val;
+                    input.disabled = data[id].locked;
+                    const lBtn = document.getElementById(`lock-${id}`);
+                    const eBtn = document.getElementById(`edit-${id}`);
+                    if(lBtn) lBtn.style.display = data[id].locked ? 'none' : 'inline';
+                    if(eBtn) eBtn.style.display = data[id].locked ? 'inline' : 'none';
+                }
+            }
+        });
+    }
+
+    // الصور والإيميل
+    window.downloadDayImage = (dIdx, dayName) => {
+        html2canvas(document.getElementById(`day-card-${dIdx}`), {scale:2, backgroundColor:"#ffffff"}).then(canvas => {
+            const a = document.createElement('a'); a.download = `${dayName}.png`; a.href = canvas.toDataURL(); a.click();
+        });
+    };
+
+    window.downloadFullImage = () => {
+        html2canvas(document.getElementById('captureArea'), {
+            scale:2, backgroundColor:"#f8f9fa", ignoreElements:(el)=>el.hasAttribute('data-html2canvas-ignore')
+        }).then(canvas => {
+            const a = document.createElement('a'); a.download = `تقرير-شامل.png`; a.href = canvas.toDataURL(); a.click();
+        });
+    };
+
+    window.sendMail = (day, dIdx) => {
+        const target = emails[currentUser];
+        let msg = `تقرير سكري ${day} لـ ${currentUser}:\n\n`;
+        times.forEach((t, tIdx) => {
+            const v = document.getElementById(`input-${currentUser}-${dIdx}-${tIdx}`).value;
+            if(v) msg += `- ${t}: ${v}\n`;
+        });
+        window.location.href = `mailto:${target}?subject=سكري ${day}&body=${encodeURIComponent(msg)}`;
+    };
+
+    // البدء
+    window.switchUser('alawi');
+</script>
+</body>
+</html>
