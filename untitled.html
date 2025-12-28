@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل سكري العائلة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2ecc71; 
+            --bg-color: #f8f9fa;
+            --marom-pink: #ff6b81;
+            --alawi-green: #2ecc71;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 10px;
+            transition: all 0.4s ease;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .user-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .user-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            transition: 0.3s;
+            background: #f9f9f9;
+        }
+
+        .user-btn.active-alawi { background: var(--alawi-green); color: white; border-color: var(--alawi-green); }
+        .user-btn.active-marom { background: var(--marom-pink); color: white; border-color: var(--marom-pink); }
+
+        h2 { text-align: center; color: #333; margin-top: 0; font-size: 1.3em; }
+
+        .day-card {
+            border: 1px solid #eee;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fff;
+        }
+
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .input-row label { flex: 1; font-size: 0.85em; color: #555; }
+
+        input {
+            width: 70px;
+            padding: 10px 5px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        input:disabled { 
+            background: #f1f8f4; 
+            border-color: var(--primary-color); 
+            color: #2c3e50;
+            font-weight: bold; 
+        }
+
+        .btn-icon {
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+            font-size: 1.1em;
+            padding: 8px;
+            border-radius: 8px;
+            line-height: 1;
+        }
+
+        .btn-mail {
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 0.75em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Tajawal';
+        }
+
+        .footer-actions {
+            margin-top: 25px;
+        }
+
+        .btn-full-report {
+            width: 100%;
+            background: #8e44ad;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        @media print { 
+            .user-selector, .btn-mail, .btn-icon, .footer-actions { display: none; } 
+            .container { box-shadow: none; max-width: 100%; }
+        }
+    </style>
+</head>
+<body id="mainBody">
+
+<div class="container">
+    <div class="user-selector">
+        <div id="btnAlawi" class="user-btn active-alawi" onclick="switchUser('alawi')">علاوي 🧔‍♂️</div>
+        <div id="btnMarom" class="user-btn" onclick="switchUser('marom')">مروم 👩‍💼</div>
+    </div>
+
+    <h2 id="titleName">سجل سكري علاوي</h2>
+
+    <div id="daysContainer"></div>
+
+    <div class="footer-actions">
+        <button class="btn-full-report" onclick="window.print()">طباعة / حفظ التقرير الأسبوعي الشامل</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = 'alawi';
+    const emails = {
+        marom: 'marammohra39@gmail.com',
+        alawi: 'aaliabuwardeh@gmail.com'
+    };
+    const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    // تم تعديل النصوص هنا كما طلبت
+    const times = ['صايم', 'بعد الغداء بساعتين', 'بعد العشاء بساعتين'];
+
+    function switchUser(user) {
+        currentUser = user;
+        const title = document.getElementById('titleName');
+        const btnA = document.getElementById('btnAlawi');
+        const btnM = document.getElementById('btnMarom');
+
+        if(user === 'alawi') {
+            document.documentElement.style.setProperty('--primary-color', '#2ecc71');
+            btnA.classList.add('active-alawi');
+            btnM.classList.remove('active-marom');
+            title.innerText = 'سجل سكري علاوي';
+        } else {
+            document.documentElement.style.setProperty('--primary-color', '#ff6b81');
+            btnM.classList.add('active-marom');
+            btnA.classList.remove('active-alawi');
+            title.innerText = 'سجل سكري مروم';
+        }
+        renderDays();
+    }
+
+    function renderDays() {
+        const container = document.getElementById('daysContainer');
+        let html = '';
+        days.forEach((day, dIdx) => {
+            html += `
+                <div class="day-card">
+                    <div class="day-header">
+                        <strong>${day}</strong>
+                        <button class="btn-mail" onclick="sendDailyEmail('${day}', ${dIdx})">إرسال اليوم ✉️</button>
+                    </div>
+                    ${times.map((time, tIdx) => {
+                        const id = `${currentUser}-${dIdx}-${tIdx}`;
+                        return `
+                            <div class="input-row">
+                                <label>${time}:</label>
+                                <input type="number" id="input-${id}" placeholder="---">
+                                <button class="btn-icon" id="lock-${id}" onclick="lockInput('${id}')">🔒</button>
+                                <button class="btn-icon" id="edit-${id}" style="display:none" onclick="unlockInput('${id}')">✏️</button>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        loadData();
+    }
+
+    function lockInput(id) {
+        const input = document.getElementById(`input-${id}`);
+        if(!input.value) return alert('يرجى إدخال القراءة');
+        input.disabled = true;
+        document.getElementById(`lock-${id}`).style.display = 'none';
+        document.getElementById(`edit-${id}`).style.display = 'inline';
+        saveToLocal();
+    }
+
+    function unlockInput(id) {
+        document.getElementById(`input-${id}`).disabled = false;
+        document.getElementById(`lock-${id}`).style.display = 'inline';
+        document.getElementById(`edit-${id}`).style.display = 'none';
+    }
+
+    function saveToLocal() {
+        const data = JSON.parse(localStorage.getItem('familySugar_v3') || '{}');
+        document.querySelectorAll('input').forEach(input => {
+            if(input.value) {
+                data[input.id] = { val: input.value, locked: input.disabled };
+            }
+        });
+        localStorage.setItem('familySugar_v3', JSON.stringify(data));
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('familySugar_v3');
+        if(!saved) return;
+        const data = JSON.parse(saved);
+        for (const id in data) {
+            const input = document.getElementById(id);
+            if(input) {
+                input.value = data[id].val;
+                if(data[id].locked) {
+                    input.disabled = true;
+                    const plainId = id.replace('input-', '');
+                    const lockBtn = document.getElementById(`lock-${plainId}`);
+                    const editBtn = document.getElementById(`edit-${plainId}`);
+                    if(lockBtn) lockBtn.style.display = 'none';
+                    if(editBtn) editBtn.style.display = 'inline';
+                }
+            }
+        }
+    }
+
+    function sendDailyEmail(dayName, dIdx) {
+        const userLabel = currentUser === 'alawi' ? 'علاوي' : 'مروم';
+        const targetEmail = emails[currentUser];
+        let message = `تقرير سكري يوم ${dayName} لـ ${userLabel}:\n\n`;
+        let hasData = false;
+
+        times.forEach((time, tIdx) => {
+            const val = document.getElementById(`input-${currentUser}-${dIdx}-${tIdx}`).value;
+            if(val) {
+                message += `- ${time}: ${val}\n`;
+                hasData = true;
+            }
+        });
+
+        if(!hasData) return alert('لا توجد قراءات مسجلة لهذا اليوم');
+        
+        const mailtoLink = `mailto:${targetEmail}?subject=تقرير سكري - ${userLabel} - ${dayName}&body=${encodeURIComponent(message)}`;
+        window.location.href = mailtoLink;
+    }
+
+    // التشغيل الافتراضي
+    switchUser('alawi');
+</script>
+
+</body>
+</html>
