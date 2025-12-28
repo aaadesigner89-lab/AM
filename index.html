@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجل سكري العائلة</title>
+    <title>سجل سكري العائلة الذكي</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --primary-color: #2ecc71; 
@@ -59,6 +60,7 @@
             padding: 15px;
             margin-bottom: 15px;
             background: #fff;
+            position: relative;
         }
 
         .day-header {
@@ -68,6 +70,11 @@
             margin-bottom: 12px;
             border-bottom: 2px solid var(--primary-color);
             padding-bottom: 5px;
+        }
+
+        .header-btns {
+            display: flex;
+            gap: 5px;
         }
 
         .input-row {
@@ -105,43 +112,50 @@
             line-height: 1;
         }
 
-        .btn-mail {
-            background: #34495e;
-            color: white;
+        .btn-sm {
             border: none;
-            padding: 6px 12px;
-            font-size: 0.75em;
+            padding: 6px 10px;
+            font-size: 0.7em;
             border-radius: 8px;
             cursor: pointer;
             font-family: 'Tajawal';
+            color: white;
         }
+
+        .btn-mail { background: #34495e; }
+        .btn-img { background: #e67e22; }
 
         .footer-actions {
             margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        .btn-full-report {
+        .btn-full {
             width: 100%;
-            background: #8e44ad;
-            color: white;
             padding: 15px;
             border: none;
             border-radius: 15px;
             font-weight: bold;
             font-size: 1em;
             cursor: pointer;
+            color: white;
         }
 
+        .btn-purple { background: #8e44ad; }
+        .btn-blue { background: #2980b9; }
+
         @media print { 
-            .user-selector, .btn-mail, .btn-icon, .footer-actions { display: none; } 
+            .user-selector, .header-btns, .btn-icon, .footer-actions { display: none; } 
             .container { box-shadow: none; max-width: 100%; }
         }
     </style>
 </head>
 <body id="mainBody">
 
-<div class="container">
-    <div class="user-selector">
+<div class="container" id="captureArea">
+    <div class="user-selector" data-html2canvas-ignore>
         <div id="btnAlawi" class="user-btn active-alawi" onclick="switchUser('alawi')">علاوي 🧔‍♂️</div>
         <div id="btnMarom" class="user-btn" onclick="switchUser('marom')">مروم 👩‍💼</div>
     </div>
@@ -150,8 +164,9 @@
 
     <div id="daysContainer"></div>
 
-    <div class="footer-actions">
-        <button class="btn-full-report" onclick="window.print()">طباعة / حفظ التقرير الأسبوعي الشامل</button>
+    <div class="footer-actions" data-html2canvas-ignore>
+        <button class="btn-full btn-blue" onclick="downloadFullImage()">📸 تحميل التقرير الشامل كصورة</button>
+        <button class="btn-full btn-purple" onclick="window.print()">🖨️ طباعة / تقرير PDF</button>
     </div>
 </div>
 
@@ -162,7 +177,6 @@
         alawi: 'aaliabuwardeh@gmail.com'
     };
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    // تم تعديل النصوص هنا كما طلبت
     const times = ['صايم', 'بعد الغداء بساعتين', 'بعد العشاء بساعتين'];
 
     function switchUser(user) {
@@ -190,10 +204,13 @@
         let html = '';
         days.forEach((day, dIdx) => {
             html += `
-                <div class="day-card">
+                <div class="day-card" id="day-card-${dIdx}">
                     <div class="day-header">
                         <strong>${day}</strong>
-                        <button class="btn-mail" onclick="sendDailyEmail('${day}', ${dIdx})">إرسال اليوم ✉️</button>
+                        <div class="header-btns" data-html2canvas-ignore>
+                            <button class="btn-sm btn-img" onclick="downloadDayImage(${dIdx}, '${day}')">📸 صورة</button>
+                            <button class="btn-sm btn-mail" onclick="sendDailyEmail('${day}', ${dIdx})">✉️ إيميل</button>
+                        </div>
                     </div>
                     ${times.map((time, tIdx) => {
                         const id = `${currentUser}-${dIdx}-${tIdx}`;
@@ -201,8 +218,8 @@
                             <div class="input-row">
                                 <label>${time}:</label>
                                 <input type="number" id="input-${id}" placeholder="---">
-                                <button class="btn-icon" id="lock-${id}" onclick="lockInput('${id}')">🔒</button>
-                                <button class="btn-icon" id="edit-${id}" style="display:none" onclick="unlockInput('${id}')">✏️</button>
+                                <button class="btn-icon" data-html2canvas-ignore id="lock-${id}" onclick="lockInput('${id}')">🔒</button>
+                                <button class="btn-icon" data-html2canvas-ignore id="edit-${id}" style="display:none" onclick="unlockInput('${id}')">✏️</button>
                             </div>
                         `;
                     }).join('')}
@@ -211,6 +228,33 @@
         });
         container.innerHTML = html;
         loadData();
+    }
+
+    // وظيفة تحميل صورة ليوم واحد
+    function downloadDayImage(dIdx, dayName) {
+        const element = document.getElementById(`day-card-${dIdx}`);
+        // إخفاء الأزرار مؤقتاً لجمالية الصورة
+        html2canvas(element, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `سكري-${currentUser}-${dayName}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    // وظيفة تحميل التقرير الشامل كصورة
+    function downloadFullImage() {
+        const element = document.getElementById(`captureArea`);
+        html2canvas(element, { 
+            scale: 2, 
+            backgroundColor: "#f8f9fa",
+            ignoreElements: (node) => node.hasAttribute('data-html2canvas-ignore') 
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `تقرير-سكري-شامل-${currentUser}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        });
     }
 
     function lockInput(id) {
@@ -229,17 +273,17 @@
     }
 
     function saveToLocal() {
-        const data = JSON.parse(localStorage.getItem('familySugar_v3') || '{}');
+        const data = JSON.parse(localStorage.getItem('familySugar_v4') || '{}');
         document.querySelectorAll('input').forEach(input => {
             if(input.value) {
                 data[input.id] = { val: input.value, locked: input.disabled };
             }
         });
-        localStorage.setItem('familySugar_v3', JSON.stringify(data));
+        localStorage.setItem('familySugar_v4', JSON.stringify(data));
     }
 
     function loadData() {
-        const saved = localStorage.getItem('familySugar_v3');
+        const saved = localStorage.getItem('familySugar_v4');
         if(!saved) return;
         const data = JSON.parse(saved);
         for (const id in data) {
@@ -249,10 +293,8 @@
                 if(data[id].locked) {
                     input.disabled = true;
                     const plainId = id.replace('input-', '');
-                    const lockBtn = document.getElementById(`lock-${plainId}`);
-                    const editBtn = document.getElementById(`edit-${plainId}`);
-                    if(lockBtn) lockBtn.style.display = 'none';
-                    if(editBtn) editBtn.style.display = 'inline';
+                    if(document.getElementById(`lock-${plainId}`)) document.getElementById(`lock-${plainId}`).style.display = 'none';
+                    if(document.getElementById(`edit-${plainId}`)) document.getElementById(`edit-${plainId}`).style.display = 'inline';
                 }
             }
         }
@@ -263,22 +305,14 @@
         const targetEmail = emails[currentUser];
         let message = `تقرير سكري يوم ${dayName} لـ ${userLabel}:\n\n`;
         let hasData = false;
-
         times.forEach((time, tIdx) => {
             const val = document.getElementById(`input-${currentUser}-${dIdx}-${tIdx}`).value;
-            if(val) {
-                message += `- ${time}: ${val}\n`;
-                hasData = true;
-            }
+            if(val) { message += `- ${time}: ${val}\n`; hasData = true; }
         });
-
         if(!hasData) return alert('لا توجد قراءات مسجلة لهذا اليوم');
-        
-        const mailtoLink = `mailto:${targetEmail}?subject=تقرير سكري - ${userLabel} - ${dayName}&body=${encodeURIComponent(message)}`;
-        window.location.href = mailtoLink;
+        window.location.href = `mailto:${targetEmail}?subject=تقرير سكري - ${userLabel} - ${dayName}&body=${encodeURIComponent(message)}`;
     }
 
-    // التشغيل الافتراضي
     switchUser('alawi');
 </script>
 
